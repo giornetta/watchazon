@@ -1,7 +1,9 @@
 package scraper
 
 import (
+	"fmt"
 	"log"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -19,11 +21,15 @@ func New(domains ...string) *Scraper {
 	}
 }
 
-func (s *Scraper) Scrape(url string) (*watchazon.Product, error) {
-	product := &watchazon.Product{
-		Link: url,
+func (s *Scraper) Scrape(link string) (*watchazon.Product, error) {
+	domain, err := domainFrom(link)
+	if err != nil {
+		return nil, err
 	}
-	var err error
+
+	product := &watchazon.Product{
+		Link: link,
+	}
 
 	c := colly.NewCollector(
 		colly.AllowedDomains(s.AllowedDomains...),
@@ -34,22 +40,23 @@ func (s *Scraper) Scrape(url string) (*watchazon.Product, error) {
 	})
 
 	c.OnHTML("#priceblock_ourprice, #priceblock_dealprice", func(e *colly.HTMLElement) {
-		product.Price, err = convertPrice(e.Text)
+		product.Price, err = convertPrice(e.Text, domain)
 	})
 
 	c.OnHTML("span.a-size-medium.a-color-price.offer-price.a-text-normal", func(e *colly.HTMLElement) {
-		product.Price, err = convertPrice(e.Text)
+		product.Price, err = convertPrice(e.Text, domain)
 	})
 
-	if err := c.Visit(url); err != nil {
+	if err := c.Visit(link); err != nil {
 		return nil, err
 	}
 
 	return product, err
 }
 
-func (s *Scraper) Search(query string) ([]*watchazon.Product, error) {
-	url := "https://www.amazon.it/s?k=" + strings.Join(strings.Split(query, " "), "+")
+func (s *Scraper) Search(query string, domain watchazon.Domain) ([]*watchazon.Product, error) {
+	query = strings.Join(strings.Split(query, " "), "+")
+	link := fmt.Sprintf("https://www.amazon.%s/s?k=%s", domain, query)
 	products := make([]*watchazon.Product, 0)
 
 	c := colly.NewCollector(
@@ -66,7 +73,7 @@ func (s *Scraper) Search(query string) ([]*watchazon.Product, error) {
 			p = element.Text
 		})
 		// If the price cannot be converted, it probably is because the product is out of stock. We skip it.
-		price, err := convertPrice(p)
+		price, err := convertPrice(p, domain)
 		if err != nil {
 			return
 		}
@@ -75,11 +82,7 @@ func (s *Scraper) Search(query string) ([]*watchazon.Product, error) {
 		title := e.ChildText("span.a-color-base.a-text-normal")
 
 		foundUrl := e.ChildAttr("a.a-link-normal.a-text-normal", "href")
-		link, err := watchazon.SanitizeURL("https://www.amazon.it" + foundUrl)
-		if err != nil {
-			log.Printf("%s (%s): %v", title, foundUrl, err)
-			return
-		}
+		link := fmt.Sprintf("https://www.amazon.%s%s", domain, foundUrl)
 
 		products = append(products, &watchazon.Product{
 			Title: title,
@@ -89,17 +92,37 @@ func (s *Scraper) Search(query string) ([]*watchazon.Product, error) {
 		})
 	})
 
-	if err := c.Visit(url); err != nil {
+	if err := c.Visit(link); err != nil {
+		log.Println(err)
 		return nil, err
 	}
 
 	return products, nil
 }
 
-func convertPrice(text string) (float64, error) {
-	p := strings.Replace(text, " €", "", 1)
-	p = strings.Replace(p, ".", "", -1)
-	p = strings.Replace(p, ",", ".", 1)
+func convertPrice(text string, domain watchazon.Domain) (float64, error) {
+	text = strings.Replace(text, "\u00a0", "", -1)
+	text = strings.Replace(text, " ", "", -1)
 
-	return strconv.ParseFloat(p, 64)
+	switch domain {
+	case "com":
+		text = strings.Replace(text, "$", "", 1)
+		text = strings.Replace(text, ",", "", -1)
+	case "it", "es", "de":
+		text = strings.Replace(text, "€", "", 1)
+		text = strings.Replace(text, ".", "", -1)
+		text = strings.Replace(text, ",", ".", 1)
+	}
+
+	return strconv.ParseFloat(text, 64)
+}
+
+func domainFrom(link string) (watchazon.Domain, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return "", err
+	}
+
+	d := strings.Split(u.Host, ".")
+	return watchazon.Domain(d[len(d)-1]), nil
 }

@@ -1,4 +1,4 @@
-package watchazon
+package service
 
 import "testing"
 
@@ -18,7 +18,7 @@ func TestSanitizeURL(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := SanitizeURL(tt.arg)
+			got, err := sanitizeURL(tt.arg)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SanitizeURL() error = %v, wantErr %v", err, tt.wantErr)
 				return

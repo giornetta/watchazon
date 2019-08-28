@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/giornetta/watchazon/config"
+	"github.com/giornetta/watchazon/locator"
 
 	"github.com/giornetta/watchazon/database"
 	"github.com/giornetta/watchazon/scraper"
@@ -16,22 +17,30 @@ import (
 )
 
 func main() {
+	// Load configuration
 	c, err := config.FromDotEnv()
 	if err != nil {
 		log.Fatalf("could not read config from .env: %v\n", err)
 	}
 
+	// Initialize Amazon scraper
 	scr := scraper.New(c.AllowedDomains...)
 
+	// Open badger database
 	db, err := database.Open(c.BadgerPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
+	// Initialize Locator service
+	loc := locator.New(c.Here.AppID, c.Here.AppCode)
+
+	// Initialize the Service
 	svc := service.New(scr, db)
 
-	bot, err := telegram.New(c.TelegramToken, svc)
+	// Create the bot
+	bot, err := telegram.New(c.TelegramToken, svc, loc)
 	if err != nil {
 		log.Fatal(err)
 	}

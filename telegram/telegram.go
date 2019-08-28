@@ -13,11 +13,12 @@ import (
 )
 
 type Bot struct {
-	bot     *telebot.Bot
-	service watchazon.Service
+	telegram *telebot.Bot
+	service  watchazon.Service
+	locator  watchazon.Locator
 }
 
-func New(token string, s watchazon.Service) (*Bot, error) {
+func New(token string, svc watchazon.Service, loc watchazon.Locator) (*Bot, error) {
 	b, err := telebot.NewBot(telebot.Settings{
 		Token:  token,
 		Poller: &telebot.LongPoller{Timeout: 10 * time.Second},
@@ -27,20 +28,21 @@ func New(token string, s watchazon.Service) (*Bot, error) {
 	}
 
 	return &Bot{
-		bot:     b,
-		service: s,
+		telegram: b,
+		service:  svc,
+		locator:  loc,
 	}, nil
 }
 
 func (b *Bot) Stop() {
-	b.bot.Stop()
+	b.telegram.Stop()
 }
 
 func (b *Bot) Run() {
-	b.bot.Handle("/start", b.handleStart)
-	b.bot.Handle("/list", b.handleList)
-	b.bot.Handle(telebot.OnText, b.handleWatch)
-	b.bot.Handle(telebot.OnCallback, func(c *telebot.Callback) {
+	b.telegram.Handle("/start", b.handleStart)
+	b.telegram.Handle("/list", b.handleList)
+	b.telegram.Handle(telebot.OnText, b.handleWatch)
+	b.telegram.Handle(telebot.OnCallback, func(c *telebot.Callback) {
 		if strings.Contains(c.Data, "DELETE") {
 			link := c.Data[8:]
 
@@ -49,35 +51,35 @@ func (b *Bot) Run() {
 				log.Printf("could not remove user %d from product %s: %v", c.Sender.ID, link, err)
 			}
 
-			_ = b.bot.Delete(c.Message)
+			_ = b.telegram.Delete(c.Message)
 
-			_ = b.bot.Respond(c, &telebot.CallbackResponse{
+			_ = b.telegram.Respond(c, &telebot.CallbackResponse{
 				Text: "Successfully Removed!",
 			})
 		} else if strings.Contains(c.Data, "OPEN") {
 			fmt.Println("ciao")
 		}
 
-		_ = b.bot.Respond(c, &telebot.CallbackResponse{})
+		_ = b.telegram.Respond(c, &telebot.CallbackResponse{})
 	})
-	b.bot.Handle(telebot.OnQuery, b.handleQuery)
+	b.telegram.Handle(telebot.OnQuery, b.handleQuery)
 
-	go b.bot.Start()
+	go b.telegram.Start()
 
 	for n := range b.service.Listen() {
 		msg := fmt.Sprintf("%s has changed price! New price is %.2f €!\n%s", n.Product.Title, n.Product.Price, n.Product.Link)
-		_, _ = b.bot.Send(sendableUser(n.UserID), msg)
+		_, _ = b.telegram.Send(sendableUser(n.UserID), msg)
 	}
 }
 
 func (b *Bot) handleStart(m *telebot.Message) {
-	_, _ = b.bot.Send(m.Sender, "Welcome! Send an Amazon link to add it to your watchlist, or use the inline keyboard to search for products!")
+	_, _ = b.telegram.Send(m.Sender, "Welcome! Send an Amazon link to add it to your watchlist, or use the inline keyboard to search for products!")
 }
 
 func (b *Bot) handleWatch(m *telebot.Message) {
 	substr := "https://www.amazon"
 	if !strings.HasPrefix(m.Text, substr) {
-		_, _ = b.bot.Send(m.Sender, "That's not a valid Amazon link! Click the button below to start searching!", &telebot.ReplyMarkup{
+		_, _ = b.telegram.Send(m.Sender, "That's not a valid Amazon link! Click the button below to start searching!", &telebot.ReplyMarkup{
 			InlineKeyboard: [][]telebot.InlineButton{
 				{
 					{
@@ -92,27 +94,27 @@ func (b *Bot) handleWatch(m *telebot.Message) {
 
 	err := b.service.AddToWatchList(m.Text, m.Sender.ID)
 	if err != nil {
-		_, _ = b.bot.Send(m.Sender, err.Error())
+		_, _ = b.telegram.Send(m.Sender, err.Error())
 		return
 	}
 
-	_, _ = b.bot.Send(m.Sender, "Product successfully added to the watchlist!")
+	_, _ = b.telegram.Send(m.Sender, "Product successfully added to the watchlist!")
 }
 
 func (b *Bot) handleList(m *telebot.Message) {
 	products, err := b.service.GetUserWatchList(m.Sender.ID)
 	if err != nil {
-		_, _ = b.bot.Send(m.Sender, "An error occurred! Sorry!")
+		_, _ = b.telegram.Send(m.Sender, "An error occurred! Sorry!")
 		return
 	}
 
 	if len(products) == 0 {
-		_, _ = b.bot.Send(m.Sender, "There are no products in your watchlist!")
+		_, _ = b.telegram.Send(m.Sender, "There are no products in your watchlist!")
 		return
 	}
 
 	for _, p := range products {
-		_, err := b.bot.Send(m.Sender, fmt.Sprintf("%s: %.2f €", p.Title, p.Price), &telebot.SendOptions{
+		_, err := b.telegram.Send(m.Sender, fmt.Sprintf("<b>Product:</b> %s\n<b>Price:</b> %.2f €", p.Title, p.Price), &telebot.SendOptions{
 			ReplyMarkup: &telebot.ReplyMarkup{
 				InlineKeyboard: [][]telebot.InlineButton{
 					{
@@ -130,6 +132,7 @@ func (b *Bot) handleList(m *telebot.Message) {
 					},
 				},
 			},
+			ParseMode: "HTML",
 		})
 		if err != nil {
 			log.Println(err)
@@ -137,18 +140,22 @@ func (b *Bot) handleList(m *telebot.Message) {
 	}
 }
 
-type recipient int
-
-func (r recipient) Recipient() string {
-	return strconv.Itoa(int(r))
-}
-func sendableUser(user int) recipient {
-	return recipient(user)
-}
-
 func (b *Bot) handleQuery(q *telebot.Query) {
-	products, err := b.service.Search(q.Text)
+	var loc watchazon.Domain
+	var err error
+	if q.Location != nil {
+		loc, err = b.locator.Locate(q.Location.Lat, q.Location.Lng)
+	} else {
+		loc = "com"
+	}
 	if err != nil {
+		log.Println(err)
+		loc = "com"
+	}
+	fmt.Println(loc)
+	products, err := b.service.Search(q.Text, loc)
+	if err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -171,7 +178,7 @@ func (b *Bot) handleQuery(q *telebot.Query) {
 		tgRes[i] = result
 		tgRes[i].SetResultID(strconv.Itoa(i)) // It's needed to set a unique string ID for each result
 	}
-	if err = b.bot.Answer(q, &telebot.QueryResponse{
+	if err = b.telegram.Answer(q, &telebot.QueryResponse{
 		Results:   tgRes,
 		CacheTime: 60, // a minute
 	}); err != nil {
@@ -180,6 +187,16 @@ func (b *Bot) handleQuery(q *telebot.Query) {
 	}
 
 	log.Printf("User %d looked for %s: %d results sent", q.From.ID, q.Text, l)
+}
+
+type recipient int
+
+func (r recipient) Recipient() string {
+	return strconv.Itoa(int(r))
+}
+
+func sendableUser(user int) recipient {
+	return recipient(user)
 }
 
 func min(a, b int) int {

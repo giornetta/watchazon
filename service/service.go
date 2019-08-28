@@ -2,7 +2,10 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"log"
+	"net/url"
+	"strings"
 	"sync"
 
 	"github.com/giornetta/watchazon"
@@ -30,7 +33,7 @@ func New(sc *scraper.Scraper, db *database.Database) *Service {
 }
 
 func (s *Service) AddToWatchList(link string, userID int) error {
-	link, err := watchazon.SanitizeURL(link)
+	link, err := sanitizeURL(link)
 	if err != nil {
 		return ErrInvalidLink
 	}
@@ -53,7 +56,7 @@ func (s *Service) AddToWatchList(link string, userID int) error {
 
 	if stored.Price != scraped.Price {
 		for _, u := range stored.Users {
-			s.Notify(scraped, u)
+			s.notify(scraped, u)
 		}
 	}
 
@@ -81,6 +84,17 @@ func (s *Service) GetUserWatchList(user int) ([]*watchazon.Product, error) {
 	return products, nil
 }
 
+func (s *Service) RemoveFromWatchList(link string, userID int) error {
+	return s.database.RemoveFromWatchList(link, userID)
+}
+
+func (s *Service) Search(query string, domain watchazon.Domain) ([]*watchazon.Product, error) {
+	if query == "" {
+		return nil, errors.New("empty query")
+	}
+	return s.scraper.Search(query, domain)
+}
+
 func (s *Service) Update() error {
 	products, err := s.database.GetAll()
 	if err != nil {
@@ -104,7 +118,7 @@ func (s *Service) Update() error {
 			}
 
 			for _, u := range p.Users {
-				s.Notify(scraped, u)
+				s.notify(scraped, u)
 			}
 
 			err = s.database.Update(scraped, 0)
@@ -119,24 +133,38 @@ func (s *Service) Update() error {
 	return nil
 }
 
-func (s *Service) RemoveFromWatchList(link string, userID int) error {
-	return s.database.RemoveFromWatchList(link, userID)
+func (s *Service) Listen() <-chan *watchazon.Notification {
+	return s.notifications
 }
 
-func (s *Service) Notify(product *watchazon.Product, userID int) {
+func (s *Service) notify(product *watchazon.Product, userID int) {
 	s.notifications <- &watchazon.Notification{
 		Product: product,
 		UserID:  userID,
 	}
 }
 
-func (s *Service) Listen() <-chan *watchazon.Notification {
-	return s.notifications
-}
-
-func (s *Service) Search(query string) ([]*watchazon.Product, error) {
-	if query == "" {
-		return nil, errors.New("empty query")
+func sanitizeURL(link string) (string, error) {
+	u, err := url.Parse(link)
+	if err != nil {
+		return "", err
 	}
-	return s.scraper.Search(query)
+
+	var productID string
+	splitPath := strings.Split(u.Path, "/")
+	for i, p := range splitPath {
+		if p == "dp" || p == "product" {
+			productID = splitPath[i+1]
+			break
+		} else if p == "gp" {
+			return sanitizeURL(fmt.Sprintf("%s://%s/%s", u.Scheme, u.Host, u.Query()["url"][0]))
+		}
+	}
+
+	if productID == "" {
+		return "", errors.New("could not find productID")
+	}
+
+	s := fmt.Sprintf("%s://%s/dp/%s", u.Scheme, u.Host, productID)
+	return s, nil
 }
