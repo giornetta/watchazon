@@ -1,12 +1,15 @@
 package watchazon
 
+import "time"
+
 type Domain string
 
 type Product struct {
-	Title string
-	Image string
-	Link  string
-	Price float64
+	Title     string
+	Image     string
+	Link      string
+	Price     float64
+	CheckedAt time.Time
 }
 
 type Notification struct {

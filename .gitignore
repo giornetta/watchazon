@@ -114,3 +114,6 @@ fabric.properties
 
 badger/*
 .env
+
+# Local Netlify folder
+.netlify

@@ -1,0 +1,197 @@
+:root {
+    --primary-color: #399E5A;
+    --secondary-color: #333;
+    --alt-color: #444;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Catamaran', sans-serif;
+    color: var(--alt-color);
+    line-height: 1.6;
+    font-size: 1.1rem;
+}
+
+h1, h2, h3, h4 {
+    line-height: 1.3;
+}
+
+img {
+    width: 100%;
+}
+
+a {
+    color: var(--secondary-color);
+    text-decoration: none;
+}
+
+ul {
+    list-style: none;
+}
+
+i {
+    color: var(--primary-color);
+}
+
+/* Utilities */
+.container {
+    max-width: 1100px;
+    margin: auto;
+    overflow: hidden;
+    padding: 0 2rem;
+}
+
+.btn {
+    display: inline-block;
+    background: var(--primary-color);
+    color: white;
+    padding: 1rem 1.5rem;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2rem;
+    border-radius: 1rem;
+    box-shadow: 0px 8px 15px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease 0s;
+}
+
+.btn:hover {
+    filter: brightness(110%);
+    transform: translateY(-7px);
+}
+
+/* Header */
+.header {
+    font-size: 1.2rem;
+    padding: 1.5rem 0;
+    position: fixed;
+    background: white;
+    top: 0;
+    width: 100%;
+}
+
+.header .logo {
+    font-size: 2rem;
+    color: var(--primary-color);
+    font-weight: 300;
+    text-align: center;
+}
+
+/* Showcase */
+.showcase-section {
+    margin-top: 8rem;
+}
+
+.showcase-section .container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-gap: 3rem;
+    align-items: center;
+    justify-content: center;
+    text-align: right;
+}
+
+.showcase-section h1 {
+    font-size: 4rem;
+    color: var(--secondary-color);
+}
+
+.showcase-section h2 {
+    margin-top: 1rem;
+}
+
+.showcase-section .btn {
+    margin-top: 1rem;
+}
+
+.showcase-section img {
+    width: 70%;
+    margin: auto;
+}
+
+/* Why */
+.why-section {
+    text-align: center;
+    margin-top: 6rem;
+    padding: 6rem 0;
+    background: #EEE;
+}
+
+.why-section h2 {
+    font-size: 2.5rem;
+}
+
+.why-section .features {
+    display: grid;
+    grid-gap: 1rem;
+    grid-template-columns: repeat(3, 1fr);
+    margin-top: 4rem;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+.why-section .feature {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-content: center;
+}
+
+.why-section .feature p {
+    font-size: 1.2rem;
+    margin-top: 1rem;
+}
+
+/* Donate */
+.donate-section {
+    padding: 6rem 0;
+    text-align: center;
+}
+
+.donate-section h2 {
+    font-size: 2.5rem;
+}
+
+.donate-section h3 {
+    font-weight: 300;
+}
+
+.donate-section .btn {
+    margin: 3rem 0;
+}
+
+/* Footer */
+.footer {
+    padding: 2rem 0;
+}
+
+.footer  ul {
+    display: flex;
+    justify-content: center;
+}
+
+.footer ul li {
+    padding: 0 1rem;
+}
+
+/* Media Queries */
+@media(max-width: 700px) {
+    /* Showcase */
+    .showcase-section .container {
+        grid-template-columns: 1fr;
+        text-align: center;
+    }
+    
+    .showcase-section .container div:first-child {
+        order: 2;
+    }
+
+    .showcase-section img {
+        width: 50%;
+        margin: auto;
+    }
+}

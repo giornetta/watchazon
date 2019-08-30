@@ -66,9 +66,22 @@ func (b *Bot) Run() {
 
 	go b.telegram.Start()
 
+	format := "🔥 A product in your watchlist has changed price!\n\n<b>📦 Product:</b> %s\n<b>💵 Price:</b> %.2f €\n<b>🕛 Last check:</b> %s"
 	for n := range b.service.Listen() {
-		msg := fmt.Sprintf("%s has changed price! New price is %.2f €!\n%s", n.Product.Title, n.Product.Price, n.Product.Link)
-		_, _ = b.telegram.Send(sendableUser(n.UserID), msg)
+		msg := fmt.Sprintf(format, n.Product.Title, n.Product.Price, n.Product.CheckedAt)
+		_, _ = b.telegram.Send(sendableUser(n.UserID), msg, &telebot.SendOptions{
+			ReplyMarkup: &telebot.ReplyMarkup{
+				InlineKeyboard: [][]telebot.InlineButton{
+					{
+						telebot.InlineButton{
+							Text: "✔️ Go to Amazon! ✔️",
+							URL:  n.Product.Link,
+						},
+					},
+				},
+			},
+			ParseMode: "HTML",
+		})
 	}
 }
 
@@ -91,6 +104,7 @@ func (b *Bot) handleWatch(m *telebot.Message) {
 		})
 		return
 	}
+	_, _ = b.telegram.Send(m.Sender, "🔄 Adding your product...")
 
 	err := b.service.AddToWatchList(m.Text, m.Sender.ID)
 	if err != nil {
@@ -98,7 +112,7 @@ func (b *Bot) handleWatch(m *telebot.Message) {
 		return
 	}
 
-	_, _ = b.telegram.Send(m.Sender, "Product successfully added to the watchlist!")
+	_, _ = b.telegram.Send(m.Sender, "✅ Product successfully added to the watchlist!")
 }
 
 func (b *Bot) handleList(m *telebot.Message) {
@@ -113,8 +127,9 @@ func (b *Bot) handleList(m *telebot.Message) {
 		return
 	}
 
+	msgFormat := "<b>📦 Product:</b> %s\n<b>💵 Price:</b> %.2f €\n<b>🕛 Last check:</b> %s"
 	for _, p := range products {
-		_, err := b.telegram.Send(m.Sender, fmt.Sprintf("<b>Product:</b> %s\n<b>Price:</b> %.2f €", p.Title, p.Price), &telebot.SendOptions{
+		_, err := b.telegram.Send(m.Sender, fmt.Sprintf(msgFormat, p.Title, p.Price, p.CheckedAt.Format("2 Jan 2006 at 15:04")), &telebot.SendOptions{
 			ReplyMarkup: &telebot.ReplyMarkup{
 				InlineKeyboard: [][]telebot.InlineButton{
 					{

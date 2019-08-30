@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/giornetta/watchazon"
 	"github.com/giornetta/watchazon/database"
@@ -43,6 +44,7 @@ func (s *Service) AddToWatchList(link string, userID int) error {
 		log.Printf("could not scrape %s: %v", link, err)
 		return ErrInternal
 	}
+	scraped.CheckedAt = time.Now()
 
 	stored, err := s.database.Get(link)
 	if err != nil {
@@ -92,7 +94,16 @@ func (s *Service) Search(query string, domain watchazon.Domain) ([]*watchazon.Pr
 	if query == "" {
 		return nil, errors.New("empty query")
 	}
-	return s.scraper.Search(query, domain)
+	products, err := s.scraper.Search(query, domain)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := 0; i < len(products); i++ {
+		products[i].Link, _ = sanitizeURL(products[i].Link)
+	}
+
+	return products, nil
 }
 
 func (s *Service) Update() error {
@@ -113,6 +124,12 @@ func (s *Service) Update() error {
 				return
 			}
 
+			scraped.CheckedAt = time.Now()
+			err = s.database.Update(scraped, 0)
+			if err != nil {
+				return
+			}
+
 			if p.Price == scraped.Price {
 				return
 			}
@@ -121,10 +138,6 @@ func (s *Service) Update() error {
 				s.notify(scraped, u)
 			}
 
-			err = s.database.Update(scraped, 0)
-			if err != nil {
-				return
-			}
 		}(p)
 	}
 
