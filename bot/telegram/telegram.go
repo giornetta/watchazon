@@ -68,7 +68,7 @@ func (b *Bot) Run() {
 
 	format := "🔥 A product in your watchlist has changed price!\n\n<b>📦 Product:</b> %s\n<b>💵 Price:</b> %.2f €\n<b>🕛 Last check:</b> %s"
 	for n := range b.service.Listen() {
-		msg := fmt.Sprintf(format, n.Product.Title, n.Product.Price, n.Product.CheckedAt)
+		msg := fmt.Sprintf(format, n.Product.Title, n.Product.Price, n.Product.FormattedTime())
 		_, _ = b.telegram.Send(sendableUser(n.UserID), msg, &telebot.SendOptions{
 			ReplyMarkup: &telebot.ReplyMarkup{
 				InlineKeyboard: [][]telebot.InlineButton{
@@ -129,7 +129,7 @@ func (b *Bot) handleList(m *telebot.Message) {
 
 	msgFormat := "<b>📦 Product:</b> %s\n<b>💵 Price:</b> %.2f €\n<b>🕛 Last check:</b> %s"
 	for _, p := range products {
-		_, err := b.telegram.Send(m.Sender, fmt.Sprintf(msgFormat, p.Title, p.Price, p.CheckedAt.Format("2 Jan 2006 at 15:04")), &telebot.SendOptions{
+		_, err := b.telegram.Send(m.Sender, fmt.Sprintf(msgFormat, p.Title, p.Price, p.FormattedTime()), &telebot.SendOptions{
 			ReplyMarkup: &telebot.ReplyMarkup{
 				InlineKeyboard: [][]telebot.InlineButton{
 					{

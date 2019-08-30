@@ -164,6 +164,10 @@ i {
     margin: 3rem 0;
 }
 
+.fa-5x {
+    display: none;
+}
+
 /* Footer */
 .footer {
     padding: 2rem 0;
@@ -193,5 +197,13 @@ i {
     .showcase-section img {
         width: 50%;
         margin: auto;
+    }
+
+    .fa-5x {
+        display: block;
+    }
+
+    .fa-7x {
+        display: none;
     }
 }

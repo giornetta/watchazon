@@ -12,6 +12,10 @@ type Product struct {
 	CheckedAt time.Time
 }
 
+func (p Product) FormattedTime() string {
+	return p.CheckedAt.Format("2 Jan 2006 at 15:04"))
+}
+
 type Notification struct {
 	Product *Product
 	UserID  int
