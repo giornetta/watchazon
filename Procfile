@@ -1,1 +1,1 @@
-web: cd bot && go build -o bot cmd/bot/main.go && cd .. && ./bot/bot
+web: go build -o bot cmd/bot/main.go && ./bot
