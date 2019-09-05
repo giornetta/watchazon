@@ -13,7 +13,7 @@ type Product struct {
 }
 
 func (p Product) FormattedTime() string {
-	return p.CheckedAt.Format("2 Jan 2006 at 15:04"))
+	return p.CheckedAt.Format("2 Jan 2006 at 15:04")
 }
 
 type Notification struct {
