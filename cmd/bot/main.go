@@ -65,7 +65,8 @@ func main() {
 		http.Handle("/", fs)
 
 		log.Println("Listening on :80...")
-		err = http.ListenAndServe(":80", nil)
+		port := os.Getenv("PORT")
+		err = http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			log.Fatal(err)
 		}
