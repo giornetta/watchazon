@@ -86,7 +86,17 @@ func (b *Bot) Run() {
 }
 
 func (b *Bot) handleStart(m *telebot.Message) {
-	_, _ = b.telegram.Send(m.Sender, "Welcome! Send an Amazon link to add it to your watchlist, or use the inline keyboard to search for products!")
+	_, _ = b.telegram.Send(m.Sender, "Welcome! Send an Amazon link to add it to your watchlist, or use the inline keyboard to search for products!", &telebot.ReplyMarkup{
+		InlineKeyboard: [][]telebot.InlineButton{
+			{
+				{
+					Text:                   "Search...",
+					InlineQueryCurrentChat: "",
+				},
+			},
+		},
+	})
+	return
 }
 
 func (b *Bot) handleWatch(m *telebot.Message) {

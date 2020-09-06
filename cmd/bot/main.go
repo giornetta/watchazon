@@ -18,10 +18,7 @@ import (
 
 func main() {
 	// Load configuration
-	c, err := config.FromDotEnv()
-	if err != nil {
-		log.Fatalf("could not read config from .env: %v\n", err)
-	}
+	c := config.FromDotEnv()
 
 	// Initialize Amazon scraper
 	scr := scraper.New(c.AllowedDomains...)
@@ -54,7 +51,7 @@ func main() {
 				log.Printf("could not update products: %v", err)
 			}
 
-			time.Sleep(3 * time.Hour)
+			time.Sleep(25 * time.Minute)
 		}
 	}()
 
