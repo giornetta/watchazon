@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -58,6 +59,17 @@ func main() {
 	log.Println("Bot running...")
 	go bot.Run()
 	defer bot.Stop()
+
+	go func() {
+		fs := http.FileServer(http.Dir("./web"))
+		http.Handle("/", fs)
+
+		log.Println("Listening on :80...")
+		err = http.ListenAndServe(":80", nil)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
 
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGTERM, syscall.SIGINT)
