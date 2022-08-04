@@ -79,16 +79,7 @@ func (b *Bot) handleStart(ctx telebot.Context) error {
 func (b *Bot) handleWatch(ctx telebot.Context) error {
 	substr := "https://www.amazon"
 	if !strings.HasPrefix(ctx.Text(), substr) {
-		return ctx.Send("That's not a valid Amazon link! Click the button below to start searching!", &telebot.ReplyMarkup{
-			InlineKeyboard: [][]telebot.InlineButton{
-				{
-					{
-						Text:            "Search...",
-						InlineQueryChat: "",
-					},
-				},
-			},
-		})
+		return ctx.Send("That's not a valid Amazon link!")
 	}
 
 	_ = ctx.Send("🔄 Adding your product...")
