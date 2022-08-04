@@ -39,11 +39,14 @@ func (s *Scraper) Scrape(link string) (*watchazon.Product, error) {
 		product.Title = strings.TrimSpace(e.Text)
 	})
 
-	c.OnHTML("#priceblock_ourprice, #priceblock_dealprice", func(e *colly.HTMLElement) {
+	c.OnHTML("#corePriceDisplay_desktop_feature_div span.a-price span.a-offscreen", func(e *colly.HTMLElement) {
+		fmt.Println(e.Text)
 		product.Price, err = convertPrice(e.Text, domain)
 	})
 
-	c.OnHTML("span.a-size-medium.a-color-price.offer-price.a-text-normal", func(e *colly.HTMLElement) {
+	// Gets correct pricing for books and items providing various buying options
+	c.OnHTML("#price", func(e *colly.HTMLElement) {
+		fmt.Println("p ", e.Text)
 		product.Price, err = convertPrice(e.Text, domain)
 	})
 

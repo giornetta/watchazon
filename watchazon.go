@@ -22,14 +22,14 @@ func (p Product) FormattedTime() string {
 // Notification is used to represent which user has to receive a notification on a specific product.
 type Notification struct {
 	Product *Product
-	UserID  int
+	UserID  int64
 }
 
 // Service defines the required methods of the Bot.
 type Service interface {
-	AddToWatchList(link string, userID int) error
-	RemoveFromWatchList(link string, userID int) error
-	GetUserWatchList(user int) ([]*Product, error)
+	AddToWatchList(link string, userID int64) error
+	RemoveFromWatchList(link string, userID int64) error
+	GetUserWatchList(user int64) ([]*Product, error)
 	Search(query string, domain Domain) ([]*Product, error)
 	Update() error
 	Listen() <-chan *Notification

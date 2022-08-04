@@ -15,7 +15,7 @@ type Database struct {
 
 type Record struct {
 	*watchazon.Product
-	Users []int
+	Users []int64
 }
 
 func (r *Record) Encode() ([]byte, error) {
@@ -115,7 +115,7 @@ func (db *Database) GetAll() ([]*Record, error) {
 	return records, nil
 }
 
-func (db *Database) Update(product *watchazon.Product, userID int) error {
+func (db *Database) Update(product *watchazon.Product, userID int64) error {
 	key := []byte(product.Link)
 
 	return db.db.Update(func(txn *badger.Txn) error {
@@ -147,7 +147,7 @@ func (db *Database) Update(product *watchazon.Product, userID int) error {
 	})
 }
 
-func (db *Database) Insert(product *watchazon.Product, userID int) error {
+func (db *Database) Insert(product *watchazon.Product, userID int64) error {
 	key := []byte(product.Link)
 
 	return db.db.Update(func(txn *badger.Txn) error {
@@ -158,7 +158,7 @@ func (db *Database) Insert(product *watchazon.Product, userID int) error {
 
 		p := &Record{
 			Product: product,
-			Users:   []int{userID},
+			Users:   []int64{userID},
 		}
 		b, err := p.Encode()
 		if err != nil {
@@ -169,7 +169,7 @@ func (db *Database) Insert(product *watchazon.Product, userID int) error {
 	})
 }
 
-func (db *Database) GetUserWatchList(userID int) ([]*Record, error) {
+func (db *Database) GetUserWatchList(userID int64) ([]*Record, error) {
 	records := make([]*Record, 0)
 	err := db.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -206,7 +206,7 @@ func (db *Database) GetUserWatchList(userID int) ([]*Record, error) {
 	return records, nil
 }
 
-func (db *Database) RemoveFromWatchList(link string, userID int) error {
+func (db *Database) RemoveFromWatchList(link string, userID int64) error {
 	key := []byte(link)
 
 	return db.db.Update(func(txn *badger.Txn) error {
@@ -247,7 +247,7 @@ func (db *Database) RemoveFromWatchList(link string, userID int) error {
 	})
 }
 
-func contains(slice []int, val int) bool {
+func contains(slice []int64, val int64) bool {
 	for _, v := range slice {
 		if v == val {
 			return true

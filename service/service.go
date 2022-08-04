@@ -33,7 +33,7 @@ func New(sc *scraper.Scraper, db *database.Database) *Service {
 	}
 }
 
-func (s *Service) AddToWatchList(link string, userID int) error {
+func (s *Service) AddToWatchList(link string, userID int64) error {
 	link, err := sanitizeURL(link)
 	if err != nil {
 		return ErrInvalidLink
@@ -45,6 +45,8 @@ func (s *Service) AddToWatchList(link string, userID int) error {
 		return ErrInternal
 	}
 	scraped.CheckedAt = time.Now()
+
+	fmt.Println(scraped.Price)
 
 	stored, err := s.database.Get(link)
 	if err != nil {
@@ -71,7 +73,7 @@ func (s *Service) AddToWatchList(link string, userID int) error {
 	return nil
 }
 
-func (s *Service) GetUserWatchList(user int) ([]*watchazon.Product, error) {
+func (s *Service) GetUserWatchList(user int64) ([]*watchazon.Product, error) {
 	prods, err := s.database.GetUserWatchList(user)
 	if err != nil {
 		log.Printf("could not get watchlist")
@@ -86,7 +88,7 @@ func (s *Service) GetUserWatchList(user int) ([]*watchazon.Product, error) {
 	return products, nil
 }
 
-func (s *Service) RemoveFromWatchList(link string, userID int) error {
+func (s *Service) RemoveFromWatchList(link string, userID int64) error {
 	return s.database.RemoveFromWatchList(link, userID)
 }
 
@@ -150,7 +152,7 @@ func (s *Service) Listen() <-chan *watchazon.Notification {
 	return s.notifications
 }
 
-func (s *Service) notify(product *watchazon.Product, userID int) {
+func (s *Service) notify(product *watchazon.Product, userID int64) {
 	s.notifications <- &watchazon.Notification{
 		Product: product,
 		UserID:  userID,
@@ -170,6 +172,7 @@ func sanitizeURL(link string) (string, error) {
 			productID = splitPath[i+1]
 			break
 		} else if p == "gp" {
+			// TODO panics if u.Query()["url"] has len 0
 			return sanitizeURL(fmt.Sprintf("%s://%s/%s", u.Scheme, u.Host, u.Query()["url"][0]))
 		}
 	}

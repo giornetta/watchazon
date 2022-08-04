@@ -61,11 +61,11 @@ func main() {
 	defer bot.Stop()
 
 	go func() {
-		fs := http.FileServer(http.Dir("./web"))
+		fs := http.FileServer(http.Dir("./cmd/bot/web"))
 		http.Handle("/", fs)
 
-		log.Println("Listening on :80...")
 		port := os.Getenv("PORT")
+		log.Printf("Listening on :%s...\n", port)
 		err = http.ListenAndServe(":"+port, nil)
 		if err != nil {
 			log.Fatal(err)
