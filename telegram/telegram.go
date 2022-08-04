@@ -39,32 +39,15 @@ func (b *Bot) Stop() {
 }
 
 func (b *Bot) Run() {
-	b.telegram.Handle("/start", b.handleStart)
-	b.telegram.Handle("/list", b.handleList)
-	b.telegram.Handle(telebot.OnText, b.handleWatch)
+	shouldSendPrompt := b.telegram.Group()
 
-	b.telegram.Handle(telebot.OnCallback, telebot.HandlerFunc(func(ctx telebot.Context) error {
-		data := ctx.Data()
+	shouldSendPrompt.Use(sendSearchButton)
 
-		if strings.Contains(data, "DELETE") {
-			link := data[8:]
+	shouldSendPrompt.Handle("/start", b.handleStart)
+	shouldSendPrompt.Handle("/list", b.handleList)
+	shouldSendPrompt.Handle(telebot.OnText, b.handleWatch)
 
-			err := b.service.RemoveFromWatchList(link, ctx.Sender().ID)
-			if err != nil {
-				return fmt.Errorf("could not remove user %d from product %s: %v", ctx.Sender().ID, link, err)
-			}
-
-			_ = b.telegram.Delete(ctx.Message())
-
-			_ = ctx.Respond(&telebot.CallbackResponse{
-				Text: "Successfully Removed!",
-			})
-		} else if strings.Contains(data, "OPEN") {
-			fmt.Println("ciao")
-		}
-
-		return ctx.Respond(&telebot.CallbackResponse{})
-	}))
+	b.telegram.Handle(telebot.OnCallback, b.handleCallback)
 
 	b.telegram.Handle(telebot.OnQuery, b.handleQuery)
 
@@ -90,16 +73,7 @@ func (b *Bot) Run() {
 }
 
 func (b *Bot) handleStart(ctx telebot.Context) error {
-	return ctx.Send("Welcome! Send an Amazon link to add it to your watchlist, or use the inline keyboard to search for products!", &telebot.ReplyMarkup{
-		InlineKeyboard: [][]telebot.InlineButton{
-			{
-				{
-					Text:            "Search...",
-					InlineQueryChat: "",
-				},
-			},
-		},
-	})
+	return ctx.Send("Welcome to Watchazon Bot!")
 }
 
 func (b *Bot) handleWatch(ctx telebot.Context) error {
@@ -145,13 +119,11 @@ func (b *Bot) handleList(ctx telebot.Context) error {
 					{
 						telebot.InlineButton{
 							Unique: "DELETE",
-							Text:   "❌ Delete! ❌",
+							Text:   "❌ Delete!",
 							Data:   p.Link,
 						},
-					},
-					{
 						telebot.InlineButton{
-							Text: "✔️ Go to Amazon! ✔️",
+							Text: "✔️ Go to Amazon!",
 							URL:  p.Link,
 						},
 					},
@@ -182,10 +154,9 @@ func (b *Bot) handleQuery(ctx telebot.Context) error {
 		log.Println(err)
 		loc = "com"
 	}
-	fmt.Println(loc)
+
 	products, err := b.service.Search(q.Text, loc)
 	if err != nil {
-		log.Println(err)
 		return err
 	}
 
@@ -213,7 +184,6 @@ func (b *Bot) handleQuery(ctx telebot.Context) error {
 		Results:   tgRes,
 		CacheTime: 60, // a minute
 	}); err != nil {
-		fmt.Println(err)
 		return err
 	}
 
@@ -221,10 +191,50 @@ func (b *Bot) handleQuery(ctx telebot.Context) error {
 	return nil
 }
 
-type recipient int
+func (b *Bot) handleCallback(ctx telebot.Context) error {
+	data := ctx.Data()
+
+	if strings.Contains(data, "DELETE") {
+		link := data[8:]
+
+		err := b.service.RemoveFromWatchList(link, ctx.Sender().ID)
+		if err != nil {
+			return fmt.Errorf("could not remove user %d from product %s: %v", ctx.Sender().ID, link, err)
+		}
+
+		_ = b.telegram.Delete(ctx.Message())
+
+		_ = ctx.Respond(&telebot.CallbackResponse{
+			Text: "Successfully Removed!",
+		})
+	} else if strings.Contains(data, "OPEN") {
+		fmt.Println("ciao")
+	}
+
+	return ctx.Respond(&telebot.CallbackResponse{})
+}
+
+func sendSearchButton(next telebot.HandlerFunc) telebot.HandlerFunc {
+	return func(ctx telebot.Context) error {
+		defer ctx.Send("Send an Amazon link to add it to your watchlist, or click below to search for products!", &telebot.ReplyMarkup{
+			InlineKeyboard: [][]telebot.InlineButton{
+				{
+					{
+						Text:            "Search...",
+						InlineQueryChat: "",
+					},
+				},
+			},
+		})
+
+		return next(ctx)
+	}
+}
+
+type recipient int64
 
 func (r recipient) Recipient() string {
-	return strconv.Itoa(int(r))
+	return strconv.FormatInt(int64(r), 10)
 }
 
 func sendableUser(user int64) recipient {

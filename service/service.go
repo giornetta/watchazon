@@ -46,8 +46,6 @@ func (s *Service) AddToWatchList(link string, userID int64) error {
 	}
 	scraped.CheckedAt = time.Now()
 
-	fmt.Println(scraped.Price)
-
 	stored, err := s.database.Get(link)
 	if err != nil {
 		err := s.database.Insert(scraped, userID)
@@ -94,15 +92,20 @@ func (s *Service) RemoveFromWatchList(link string, userID int64) error {
 
 func (s *Service) Search(query string, domain watchazon.Domain) ([]*watchazon.Product, error) {
 	if query == "" {
-		return nil, errors.New("empty query")
-	}
-	products, err := s.scraper.Search(query, domain)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("won't search for empty string")
 	}
 
+	prods, err := s.scraper.Search(query, domain)
+	if err != nil {
+		return nil, fmt.Errorf("could not search for \"%s\": %v", query, err)
+	}
+
+	products := make([]*watchazon.Product, 0, len(prods))
 	for i := 0; i < len(products); i++ {
-		products[i].Link, _ = sanitizeURL(products[i].Link)
+		if link, err := sanitizeURL(prods[i].Link); err == nil {
+			prods[i].Link = link
+			products = append(products, prods[i])
+		}
 	}
 
 	return products, nil
@@ -172,8 +175,12 @@ func sanitizeURL(link string) (string, error) {
 			productID = splitPath[i+1]
 			break
 		} else if p == "gp" {
-			// TODO panics if u.Query()["url"] has len 0
-			return sanitizeURL(fmt.Sprintf("%s://%s/%s", u.Scheme, u.Host, u.Query()["url"][0]))
+			// If it's a show on prime video, skip it
+			if u.Query().Get("url") == "" {
+				break
+			}
+
+			return sanitizeURL(fmt.Sprintf("%s://%s/%s", u.Scheme, u.Host, u.Query().Get("url")))
 		}
 	}
 
